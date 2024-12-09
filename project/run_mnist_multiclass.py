@@ -2,7 +2,8 @@ from mnist import MNIST
 
 import minitorch
 
-mndata = MNIST("project/data/")
+#mndata = MNIST("project/data/")
+mndata = MNIST("data/")
 images, labels = mndata.load_training()
 
 BACKEND = minitorch.TensorBackend(minitorch.FastOps)
@@ -33,6 +34,35 @@ class Linear(minitorch.Module):
             x.view(batch, in_size) @ self.weights.value.view(in_size, self.out_size)
         ).view(batch, self.out_size) + self.bias.value
 
+def conv2d_forward(input, weights, bias):
+    batch, in_channels, height, width = input.shape
+    out_channels, in_channels_, kh, kw = weights.shape
+    
+    # Calculate output dimensions
+    out_height = height - kh + 1
+    out_width = width - kw + 1
+    
+    # Initialize output tensor
+    out = input.zeros((batch, out_channels, out_height, out_width))
+    
+    # Perform convolution
+    for b in range(batch):
+        for oc in range(out_channels):
+            for h in range(out_height):
+                for w in range(out_width):
+                    # Extract window
+                    for ic in range(in_channels):
+                        for i in range(kh):
+                            for j in range(kw):
+                                out[b, oc, h, w] += (
+                                    input[b, ic, h + i, w + j] * 
+                                    weights[oc, ic, i, j]
+                                )
+                    # Add bias
+                    out[b, oc, h, w] += bias[oc, 0, 0]
+    
+    return out
+
 
 class Conv2d(minitorch.Module):
     def __init__(self, in_channels, out_channels, kh, kw):
@@ -42,7 +72,9 @@ class Conv2d(minitorch.Module):
 
     def forward(self, input):
         # TODO: Implement for Task 4.5.
-        raise NotImplementedError("Need to implement for Task 4.5")
+        bias_val = self.bias.value
+        weights_val = self.weights.value
+        return minitorch.conv2d(input, weights_val) + bias_val
 
 
 class Network(minitorch.Module):
@@ -68,11 +100,27 @@ class Network(minitorch.Module):
         self.out = None
 
         # TODO: Implement for Task 4.5.
-        raise NotImplementedError("Need to implement for Task 4.5")
+        # raise NotImplementedError("Need to implement for Task 4.5")
+        self.encoder1 = Conv2d(1, 4, 3, 3)
+        self.encoder2 = Conv2d(4, 8, 3, 3)
+        self.classifier1 = Linear(392, 64)
+        self.classifier2 = Linear(64, C)
 
     def forward(self, x):
         # TODO: Implement for Task 4.5.
-        raise NotImplementedError("Need to implement for Task 4.5")
+        # raise NotImplementedError("Need to implement for Task 4.5")
+        self.mid = self.encoder1.forward(x).relu()
+        self.out = self.encoder2.forward(self.mid).relu()
+
+        # Reduce and classify
+        features = minitorch.avgpool2d(self.out, (4, 4))
+        features = self.classifier1.forward(features.view(BATCH, 392)).relu()
+
+        if self.training:
+            features = minitorch.dropout(features, 0.25)
+        scores = self.classifier2.forward(features)
+        return minitorch.logsoftmax(scores, dim=1)
+
 
 
 def make_mnist(start, stop):
@@ -87,9 +135,16 @@ def make_mnist(start, stop):
     return X, ys
 
 
-def default_log_fn(epoch, total_loss, correct, total, losses, model):
-    print(f"Epoch {epoch} loss {total_loss} valid acc {correct}/{total}")
+#def default_log_fn(epoch, total_loss, correct, total, losses, model):
+ #   print(f"Epoch {epoch} loss {total_loss} valid acc {correct}/{total}")
 
+def default_log_fn(epoch, total_loss, correct, total, losses, model):
+    log_message = f"Epoch {epoch} loss {total_loss} valid acc {correct}/{total}"
+    print(log_message)  # Keep console output for monitoring
+    
+    # Append to mnist.txt
+    with open('mnist.txt', 'a') as f:
+        f.write(log_message + '\n')
 
 class ImageTrain:
     def __init__(self):
