@@ -67,75 +67,104 @@ max_reduce = FastOps.reduce(operators.max, -1e9)
 
 def argmax(input: Tensor, dim: int) -> Tensor:
     """
-    Compute the argmax as a 1-hot tensor.
-
-    Args:
-        input : input tensor
-        dim : dimension to apply argmax
-
-
+    Computes the argmax as a one-hot encoded tensor along the specified dimension.
+    
+    Parameters:
+        input (Tensor): Input tensor to compute argmax over
+        dim (int): Dimension along which to find maximum values
+    
     Returns:
-        :class:`Tensor` : tensor with 1 on highest cell in dim, 0 otherwise
+        Tensor: One-hot encoded tensor with 1.0 at maximum positions
 
     """
-    out = max_reduce(input, dim)
-    return out == input
+    return max_reduce(input, dim) == input
 
 
 class Max(Function):
+    """
+    Function implementing the max reduction operation with gradient support.
+    """
+    
     @staticmethod
     def forward(ctx: Context, input: Tensor, dim: Tensor) -> Tensor:
-        "Forward of max should be max reduction"
-        # TODO: Implement for Task 4.4.
+        """
+        Computes the maximum values along the specified dimension.
+        
+        Parameters:
+            ctx (Context): Context for saving values needed in backward pass
+            input (Tensor): Input tensor
+            dim (Tensor): Dimension to reduce over (as a single-element tensor)
+            
+        Returns:
+            Tensor: Tensor containing maximum values along specified dimension
+        """
+        # Save input and dimension for backward pass
         ctx.save_for_backward(input, int(dim.item()))
         return max_reduce(input, int(dim.item()))
-        # raise NotImplementedError("Need to implement for Task 4.4")
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, float]:
-        "Backward of max should be argmax (see above)"
+        """
+        Computes gradient of max operation using argmax.
+        
+        Parameters:
+            ctx (Context): Context containing saved tensors from forward pass
+            grad_output (Tensor): Gradient with respect to output
+            
+        Returns:
+            Tuple[Tensor, float]: Tuple of (gradient with respect to input, gradient with respect to dimension)
+        """
         input, dim = ctx.saved_values
-        return grad_output * argmax(input, dim) , 0.0
-        # TODO: Implement for Task 4.4.
-        # raise NotImplementedError("Need to implement for Task 4.4")
-
+        # Gradient is only propagated through maximum elements
+        return grad_output * argmax(input, dim), 0.0
 
 
 def max(input: Tensor, dim: int) -> Tensor:
-    """Returns maximum values along dimension.
+    """
+    Computes maximum values along specified dimension.
     
-    Args:
-        input: Input tensor
-        dim: Dimension to reduce over
+    Wrapper around Max.apply that converts dimension to tensor.
+    
+    Parameters:
+        input (Tensor): Input tensor
+        dim (int): Dimension to reduce over
         
     Returns:
-        Tensor with maximums along dimension
+        Tensor: Maximum values along specified dimension
     """
     return Max.apply(input, tensor([dim]))
 
 def softmax(input: Tensor, dim: int) -> Tensor:
-    """Applies softmax along dimension.
+    """
+    Applies softmax normalization along specified dimension.
     
-    Args:
-        input: Input tensor
-        dim: Dimension to apply softmax over
+    Parameters:
+        input (Tensor): Input tensor
+        dim (int): Dimension along which to apply softmax
         
     Returns:
-        Softmax probabilities
+        Tensor: Softmax probabilities (sum to 1 along dim)
     """
-    max_val = max_reduce(input, dim)
-    shifted_input_exp = (input - max_val).exp()
-    return shifted_input_exp / shifted_input_exp.sum(dim=dim)
+    # Subtract max for numerical stability
+    max_vals = max_reduce(input, dim)
+    shifted = input - max_vals
+    exp_vals = shifted.exp()
+    sum_exp = exp_vals.sum(dim=dim)
+    return exp_vals / sum_exp
 
 def logsoftmax(input: Tensor, dim: int) -> Tensor:
-    """Applies log softmax along dimension.
+    """
+    Applies log softmax along specified dimension using numerically stable computation.
     
-    Args:
-        input: Input tensor
-        dim: Dimension for log softmax
+    Computes as x_i - max(x) - log(sum(exp(x_j - max(x)))) using the LogSumExp trick
+    for numerical stability.
+    
+    Parameters:
+        input (Tensor): Input tensor
+        dim (int): Dimension along which to apply log softmax
         
     Returns:
-        Log softmax values
+        Tensor: Log of softmax probabilities
     """
     max_val = max_reduce(input, dim)
     shifted_input = input - max_val
@@ -146,32 +175,37 @@ def logsoftmax(input: Tensor, dim: int) -> Tensor:
 
 def maxpool2d(input: Tensor, kernel: Tuple[int, int]) -> Tensor:
     """
-    Tiled max pooling 2D
-
-    Args:
-        input: batch x channel x height x width
-        kernel: height x width of pooling
-
+    Applies 2D max pooling over a 4D input tensor.
+    
+    First tiles input tensor into pooling windows, then reduces each window
+    by taking the maximum value.
+    
+    Parameters:
+        input (Tensor): Input tensor of shape (batch x channel x height x width)
+        kernel (Tuple[int, int]): Size of pooling window as (kernel_height, kernel_width)
+        
     Returns:
-        Tensor : pooled tensor
+        Tensor: Pooled tensor with reduced height and width dimensions
     """
     batch, channel, height, width = input.shape
-    out, new_height, new_width = tile(input, kernel)
-    out = max(out, len(out.shape) - 1)
-    return out.view(batch, channel, new_height, new_width)
+    # Reshape input into pooling windows
+    tiled_input, new_height, new_width = tile(input, kernel)
+    # Take max over pooling window dimension
+    pooled = max(tiled_input, len(tiled_input.shape) - 1)
+    return pooled.view(batch, channel, new_height, new_width)
 
 
 def dropout(input: Tensor, rate: float, ignore: bool = False) -> Tensor:
     """
-    Dropout positions based on random noise.
+    Applies dropout regularization to input tensor.
 
     Args:
-        input : input tensor
-        rate : probability [0, 1) of dropping out each position
-        ignore : skip dropout, i.e. do nothing at all
+        input (Tensor): Input tensor
+        rate (float): Dropout probability in range [0, 1)
+        ignore (bool): If True, return input unchanged (useful for inference)
 
     Returns:
-        tensor with random positions dropped out
+        Tensor: Tensor with random elements dropped out and appropriately scaled
     """
     if ignore:
         return input
