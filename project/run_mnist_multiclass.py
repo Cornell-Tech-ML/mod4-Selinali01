@@ -37,14 +37,14 @@ class Linear(minitorch.Module):
 def conv2d_forward(input, weights, bias):
     batch, in_channels, height, width = input.shape
     out_channels, in_channels_, kh, kw = weights.shape
-    
+
     # Calculate output dimensions
     out_height = height - kh + 1
     out_width = width - kw + 1
-    
+
     # Initialize output tensor
     out = input.zeros((batch, out_channels, out_height, out_width))
-    
+
     # Perform convolution
     for b in range(batch):
         for oc in range(out_channels):
@@ -55,12 +55,12 @@ def conv2d_forward(input, weights, bias):
                         for i in range(kh):
                             for j in range(kw):
                                 out[b, oc, h, w] += (
-                                    input[b, ic, h + i, w + j] * 
+                                    input[b, ic, h + i, w + j] *
                                     weights[oc, ic, i, j]
                                 )
                     # Add bias
                     out[b, oc, h, w] += bias[oc, 0, 0]
-    
+
     return out
 
 
@@ -141,7 +141,7 @@ def make_mnist(start, stop):
 def default_log_fn(epoch, total_loss, correct, total, losses, model):
     log_message = f"Epoch {epoch} loss {total_loss} valid acc {correct}/{total}"
     print(log_message)  # Keep console output for monitoring
-    
+
     # Append to mnist.txt
     with open('mnist.txt', 'a') as f:
         f.write(log_message + '\n')

@@ -7,8 +7,6 @@ from numba import njit as _njit
 from .autodiff import Context
 from .tensor import Tensor
 from .tensor_data import (
-    MAX_DIMS,
-    Index,
     Shape,
     Strides,
     Storage,
@@ -97,10 +95,10 @@ def _tensor_conv1d(
         out_index = np.empty(3, np.int32)
         to_index(out_pos, out_shape, out_index)
         cur_batch, cur_out_channel, cur_width = out_index
-        
+
         # Initialize accumulator
         acc = 0.0
-        
+
         # For each position in kernel and input channels
         # Cache strides for faster access
         s1o, s11, s12 = input_strides
@@ -114,25 +112,17 @@ def _tensor_conv1d(
                 else:
                     w_shift = kw - k - 1
                     in_shift = cur_width - k
-                
+
                 # Only accumulate if within input bounds
                 if 0 <= in_shift < width:
                     # Get input value
-                    in_pos = (
-                        cur_batch * s1o
-                        + cur_in_channel * s11
-                        + in_shift * s12
-                    )
-                    
+                    in_pos = cur_batch * s1o + cur_in_channel * s11 + in_shift * s12
+
                     # Get weight value
-                    w_pos = (
-                        cur_out_channel * s2o
-                        + cur_in_channel * s21
-                        + w_shift * s22
-                    )
-                    
+                    w_pos = cur_out_channel * s2o + cur_in_channel * s21 + w_shift * s22
+
                     acc += input[in_pos] * weight[w_pos]
-        
+
         # Write output
         out_pos = (
             cur_batch * out_strides[0]
@@ -272,7 +262,7 @@ def _tensor_conv2d(
         out_index = np.empty(4, np.int32)
         to_index(out_pos, out_shape, out_index)
         cur_batch, cur_out_channel, cur_h, cur_w = out_index
-        
+
         acc = 0.0
         for cur_in_channel in range(in_channels):
             for i in range(kh):
@@ -287,27 +277,27 @@ def _tensor_conv2d(
                         w_shift = cur_w - j
                         w_h = kh - 1 - i
                         w_w = kw - 1 - j
-                    
+
                     if 0 <= h_shift < h and 0 <= w_shift < w:
                         in_pos = (
-                            cur_batch * s10 
-                            + cur_in_channel * s11 
-                            + h_shift * s12 
+                            cur_batch * s10
+                            + cur_in_channel * s11
+                            + h_shift * s12
                             + w_shift * s13
                         )
-                        
+
                         w_pos = (
-                            cur_out_channel * s20 
-                            + cur_in_channel * s21 
-                            + w_h * s22 
+                            cur_out_channel * s20
+                            + cur_in_channel * s21
+                            + w_h * s22
                             + w_w * s23
                         )
-                        
+
                         acc += input[in_pos] * weight[w_pos]
-        
+
         out_pos = (
             cur_batch * out_strides[0]
-            + cur_out_channel * out_strides[1] 
+            + cur_out_channel * out_strides[1]
             + cur_h * out_strides[2]
             + cur_w * out_strides[3]
         )
