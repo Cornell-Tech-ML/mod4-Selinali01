@@ -1,3 +1,13 @@
+"""Main module initialization file that imports and exposes all submodules.
+
+This module serves as the primary entry point for the library, importing and making
+available all core functionality including tensors, neural network components,
+optimization algorithms, and various utility functions.
+
+The wildcard imports are intentional to provide a simplified API surface, with
+ruff/flake8 warnings disabled where appropriate.
+"""
+
 from .testing import MathTest, MathTestVariable  # type: ignore # noqa: F401,F403
 from .datasets import *  # noqa: F401,F403
 from .optim import *  # noqa: F401,F403

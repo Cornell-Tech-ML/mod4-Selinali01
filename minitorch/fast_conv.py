@@ -20,6 +20,18 @@ Fn = TypeVar("Fn")
 
 
 def njit(fn: Fn, **kwargs: Any) -> Fn:
+    """Just-in-time compile a function with 'always' inlining.
+
+    Args:
+    ----
+        fn: Function to be compiled
+        **kwargs: Additional keyword arguments to pass to the numba compiler
+
+    Returns:
+    -------
+        Fn: Compiled function optimized for performance
+
+    """
     return _njit(inline="always", **kwargs)(fn)  # type: ignore
 
 
@@ -85,8 +97,8 @@ def _tensor_conv1d(
         and in_channels == in_channels_
         and out_channels == out_channels_
     )
-    s1 = input_strides
-    s2 = weight_strides
+    # s1 = input_strides
+    # s2 = weight_strides
 
     # TODO: Implement for Task 4.1.
     # Parallelize over output positions
@@ -165,6 +177,20 @@ class Conv1dFun(Function):
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
+        """Compute the gradient for 1D convolution.
+
+        Args:
+        ----
+            ctx: Context object containing saved tensors from forward pass
+            grad_output: Gradient of the loss with respect to convolution output
+
+        Returns:
+        -------
+            Tuple[Tensor, Tensor]: Tuple containing:
+                - Gradient with respect to the input
+                - Gradient with respect to the weight
+
+        """
         input, weight = ctx.saved_values
         batch, in_channels, w = input.shape
         out_channels, in_channels, kw = weight.shape
@@ -335,6 +361,20 @@ class Conv2dFun(Function):
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
+        """Compute the gradient for 2D convolution.
+
+        Args:
+        ----
+            ctx: Context object containing saved tensors from forward pass
+            grad_output: Gradient of the loss with respect to convolution output
+
+        Returns:
+        -------
+            Tuple[Tensor, Tensor]: Tuple containing:
+                - Gradient with respect to the input
+                - Gradient with respect to the weight
+
+        """
         input, weight = ctx.saved_values
         batch, in_channels, h, w = input.shape
         out_channels, in_channels, kh, kw = weight.shape

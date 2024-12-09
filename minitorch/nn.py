@@ -106,13 +106,13 @@ class Max(Function):
     def forward(ctx: Context, input: Tensor, dim: Tensor) -> Tensor:
         """Computes the maximum values along the specified dimension.
 
-        Parameters
-        ----------
-            ctx (Context): Context for saving values needed in backward pass
-            input (Tensor): Input tensor
-            dim (Tensor): Dimension to reduce over (as a single-element tensor)
+        Args:
+        ----
+            ctx: Context for saving values needed in backward pass
+            input: Input tensor
+            dim: Dimension to reduce over (as a single-element tensor)
 
-        Returns
+        Returns:
         -------
             Tensor: Tensor containing maximum values along specified dimension
 
@@ -125,12 +125,12 @@ class Max(Function):
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, float]:
         """Computes gradient of max operation using argmax.
 
-        Parameters
-        ----------
+        Args:
+        ----
             ctx (Context): Context containing saved tensors from forward pass
             grad_output (Tensor): Gradient with respect to output
 
-        Returns
+        Returns:
         -------
             Tuple[Tensor, float]: Tuple of (gradient with respect to input, gradient with respect to dimension)
 
@@ -145,12 +145,12 @@ def max(input: Tensor, dim: int) -> Tensor:
 
     Wrapper around Max.apply that converts dimension to tensor.
 
-    Parameters
-    ----------
+    Args:
+    ----
         input (Tensor): Input tensor
         dim (int): Dimension to reduce over
 
-    Returns
+    Returns:
     -------
         Tensor: Maximum values along specified dimension
 
@@ -161,12 +161,12 @@ def max(input: Tensor, dim: int) -> Tensor:
 def softmax(input: Tensor, dim: int) -> Tensor:
     """Applies softmax normalization along specified dimension.
 
-    Parameters
-    ----------
+    Args:
+    ----
         input (Tensor): Input tensor
         dim (int): Dimension along which to apply softmax
 
-    Returns
+    Returns:
     -------
         Tensor: Softmax probabilities (sum to 1 along dim)
 
@@ -185,12 +185,12 @@ def logsoftmax(input: Tensor, dim: int) -> Tensor:
     Computes as x_i - max(x) - log(sum(exp(x_j - max(x)))) using the LogSumExp trick
     for numerical stability.
 
-    Parameters
-    ----------
+    Args:
+    ----
         input (Tensor): Input tensor
         dim (int): Dimension along which to apply log softmax
 
-    Returns
+    Returns:
     -------
         Tensor: Log of softmax probabilities
 
@@ -210,12 +210,12 @@ def maxpool2d(input: Tensor, kernel: Tuple[int, int]) -> Tensor:
     First tiles input tensor into pooling windows, then reduces each window
     by taking the maximum value.
 
-    Parameters
-    ----------
+    Args:
+    ----
         input (Tensor): Input tensor of shape (batch x channel x height x width)
         kernel (Tuple[int, int]): Size of pooling window as (kernel_height, kernel_width)
 
-    Returns
+    Returns:
     -------
         Tensor: Pooled tensor with reduced height and width dimensions
 
