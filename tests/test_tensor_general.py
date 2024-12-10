@@ -38,7 +38,6 @@ if numba.cuda.is_available():
     matmul_tests.append(pytest.param("cuda", marks=pytest.mark.task3_4))
     shared["cuda"] = minitorch.TensorBackend(minitorch.CudaOps)
 
-
 # ## Task 3.1 and 3.3
 
 

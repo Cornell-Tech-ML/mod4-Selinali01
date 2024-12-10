@@ -64,6 +64,10 @@ class Scalar:
     unique_id: int = field(default=0)
 
     def __post_init__(self):
+        """Initialize the Scalar object after creation.
+
+        This method sets the unique_id, name, and ensures data is a float.
+        """
         global _var_count
         _var_count += 1
         object.__setattr__(self, "unique_id", _var_count)
@@ -71,24 +75,93 @@ class Scalar:
         object.__setattr__(self, "data", float(self.data))
 
     def __repr__(self) -> str:
+        """Return a string representation of the Scalar.
+
+        Returns
+        -------
+            A string representation of the Scalar.
+
+        """
         return f"Scalar({self.data})"
 
     def __mul__(self, b: ScalarLike) -> Scalar:
+        """Multiply this Scalar with another Scalar or scalar-like object.
+
+        Args:
+        ----
+            b: The value to multiply with.
+
+        Returns:
+        -------
+            The result of the multiplication.
+
+        """
         return Mul.apply(self, b)
 
     def __truediv__(self, b: ScalarLike) -> Scalar:
+        """Divide this Scalar by another Scalar or scalar-like object.
+
+        Args:
+        ----
+            b: The value to divide by.
+
+        Returns:
+        -------
+            The result of the division.
+
+        """
         return Mul.apply(self, Inv.apply(b))
 
     def __rtruediv__(self, b: ScalarLike) -> Scalar:
+        """Divide a scalar-like object by this Scalar.
+
+        Args:
+        ----
+            b: The value to be divided.
+
+        Returns:
+        -------
+            The result of the division.
+
+        """
         return Mul.apply(b, Inv.apply(self))
 
     def __bool__(self) -> bool:
+        """Convert the Scalar to a boolean value.
+
+        Returns
+        -------
+            The boolean representation of the Scalar's data.
+
+        """
         return bool(self.data)
 
     def __radd__(self, b: ScalarLike) -> Scalar:
+        """Add a scalar-like object to this Scalar (right-side addition).
+
+        Args:
+        ----
+            b: The value to add.
+
+        Returns:
+        -------
+            The result of the addition.
+
+        """
         return self + b
 
     def __rmul__(self, b: ScalarLike) -> Scalar:
+        """Multiply a scalar-like object with this Scalar (right-side multiplication).
+
+        Args:
+        ----
+            b: The value to multiply with.
+
+        Returns:
+        -------
+            The result of the multiplication.
+
+        """
         return self * b
 
     # Variable elements for backprop
@@ -108,25 +181,73 @@ class Scalar:
         self.__setattr__("derivative", self.derivative + x)
 
     def is_leaf(self) -> bool:
-        """True if this variable created by the user (no `last_fn`)"""
+        """Check if this variable was created by the user (no `last_fn`).
+
+        Returns
+        -------
+            True if this is a leaf variable, False otherwise.
+
+        """
         return self.history is not None and self.history.last_fn is None
 
     def is_constant(self) -> bool:
+        """Check if this variable is a constant (has no history).
+
+        Returns
+        -------
+            True if this is a constant, False otherwise.
+
+        """
         return self.history is None
 
     @property
     def parents(self) -> Iterable[Variable]:
-        """Get the variables used to create this one."""
+        """Get the parent variables of this Scalar.
+
+        Returns
+        -------
+            The input variables that were used to create this Scalar.
+
+        Raises
+        ------
+            AssertionError: If the Scalar has no history.
+
+        """
         assert self.history is not None
         return self.history.inputs
 
     def chain_rule(self, d_output: Any) -> Iterable[Tuple[Variable, Any]]:
+        """Apply the chain rule to compute gradients.
+
+        Args:
+        ----
+            d_output: The gradient flowing back from the output.
+
+        Returns:
+        -------
+            Pairs of (variable, gradient) for each input variable.
+
+        Raises:
+        ------
+            AssertionError: If the Scalar has no history or last function.
+            NotImplementedError: If the method is not implemented.
+
+        """
         h = self.history
         assert h is not None
         assert h.last_fn is not None
         assert h.ctx is not None
 
-        raise NotImplementedError("Need to include this file from past assignment.")
+        # Compute the derivative of the output with respect to each input
+        derivatives = h.last_fn._backward(h.ctx, d_output)
+
+        # Pair each derivative with its corresponding input variable
+        # Filter out constants (inputs without history)
+        return (
+            (input_var, deriv)
+            for input_var, deriv in zip(h.inputs, derivatives)
+            if not input_var.is_constant()
+        )
 
     def backward(self, d_output: Optional[float] = None) -> None:
         """Calls autodiff to fill in the derivatives for the history of this object.
@@ -141,17 +262,140 @@ class Scalar:
             d_output = 1.0
         backpropagate(self, d_output)
 
-    raise NotImplementedError("Need to include this file from past assignment.")
+    # TODO: Implement for Task 1.2.
+    def __add__(self, b: ScalarLike) -> Scalar:
+        """Add this Scalar to another Scalar or scalar-like object.
+
+        Args:
+        ----
+            b: The value to add.
+
+        Returns:
+        -------
+            The result of the addition.
+
+        """
+        return Add.apply(self, b)
+
+    def __lt__(self, b: ScalarLike) -> Scalar:
+        """Compare if this Scalar is less than another Scalar or scalar-like object.
+
+        Args:
+        ----
+            b: The value to compare with.
+
+        Returns:
+        -------
+            A Scalar representing the result of the comparison.
+
+        """
+        return LT.apply(self, b)
+
+    def __gt__(self, b: ScalarLike) -> Scalar:
+        """Compare if this Scalar is greater than another Scalar or scalar-like object.
+
+        Args:
+        ----
+            b: The value to compare with.
+
+        Returns:
+        -------
+            A Scalar representing the result of the comparison.
+
+        """
+        return LT.apply(b, self)
+
+    def __eq__(self, b: ScalarLike) -> Scalar:
+        """Compare this Scalar for equality with another Scalar or scalar-like object.
+
+        Args:
+        ----
+            b: The value to compare with.
+
+        Returns:
+        -------
+            A Scalar representing the result of the comparison (1.0 if equal, 0.0 otherwise).
+
+        """
+        return EQ.apply(b, self)
+
+    def __sub__(self, b: ScalarLike) -> Scalar:
+        """Subtract another Scalar or scalar-like object from this Scalar.
+
+        Args:
+        ----
+            b: The value to subtract.
+
+        Returns:
+        -------
+            The result of the subtraction.
+
+        """
+        return Add.apply(self, -b)
+
+    def __neg__(self) -> Scalar:
+        """Negate this Scalar.
+
+        Returns
+        -------
+            The negated Scalar.
+
+        """
+        return Neg.apply(self)
+
+    def log(self) -> Scalar:
+        """Compute the natural logarithm of this Scalar.
+
+        Returns
+        -------
+            The result of the logarithm operation.
+
+        """
+        return Log.apply(self)
+
+    def exp(self) -> Scalar:
+        """Compute the exponential of this Scalar.
+
+        Returns
+        -------
+            The result of the exponential operation.
+
+        """
+        return Exp.apply(self)
+
+    def sigmoid(self) -> Scalar:
+        """Compute the sigmoid of this Scalar.
+
+        Returns
+        -------
+            The result of the sigmoid operation.
+
+        """
+        return Sigmoid.apply(self)
+
+    def relu(self) -> Scalar:
+        """Compute the ReLU (Rectified Linear Unit) of this Scalar.
+
+        Returns
+        -------
+            The result of the ReLU operation.
+
+        """
+        return ReLU.apply(self)
+
+
+# raise NotImplementedError("Need to implement for Task 1.2")
 
 
 def derivative_check(f: Any, *scalars: Scalar) -> None:
     """Checks that autodiff works on a python function.
     Asserts False if derivative is incorrect.
 
-    Parameters
-    ----------
+    Args:
+    ----
         f : function from n-scalars to 1-scalar.
-        *scalars  : n input scalar values.
+        *scalars : n input scalar values.
+
 
     """
     out = f(*scalars)

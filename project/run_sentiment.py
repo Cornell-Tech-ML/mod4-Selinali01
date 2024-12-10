@@ -35,7 +35,9 @@ class Conv1d(minitorch.Module):
 
     def forward(self, input):
         # TODO: Implement for Task 4.5.
-        raise NotImplementedError("Need to implement for Task 4.5")
+        bias_val = self.bias.value
+        weights_val = self.weights.value
+        return minitorch.conv1d(input, weights_val) + self.bias.value
 
 
 class CNNSentimentKim(minitorch.Module):
@@ -62,14 +64,27 @@ class CNNSentimentKim(minitorch.Module):
         super().__init__()
         self.feature_map_size = feature_map_size
         # TODO: Implement for Task 4.5.
-        raise NotImplementedError("Need to implement for Task 4.5")
+        self.first_conv = Conv1d(embedding_size, feature_map_size, filter_sizes[0])
+        self.second_conv = Conv1d(embedding_size, feature_map_size, filter_sizes[1])
+        self.third_conv = Conv1d(embedding_size, feature_map_size, filter_sizes[2])
+        self.classifier = Linear(feature_map_size, 1)
+        self.dropout = dropout
 
     def forward(self, embeddings):
         """
         embeddings tensor: [batch x sentence length x embedding dim]
         """
         # TODO: Implement for Task 4.5.
-        raise NotImplementedError("Need to implement for Task 4.5")
+        # raise NotImplementedError("Need to implement for Task 4.5")
+        x = embeddings.permute(0, 2, 1)
+        x1 = self.first_conv(x).relu()
+        x2 = self.second_conv(x).relu()
+        x3 = self.third_conv(x).relu()
+        x = minitorch.max(x1, 2) + minitorch.max(x2, 2) + minitorch.max(x3, 2)
+        x = self.classifier(x.view(x.shape[0], self.feature_map_size))
+        if self.training:
+            x = minitorch.dropout(x, self.dropout)
+        return x.sigmoid().view(x.shape[0])
 
 
 # Evaluation helper methods
@@ -87,7 +102,7 @@ def get_predictions_array(y_true, model_output):
 
 def get_accuracy(predictions_array):
     correct = 0
-    for y_true, y_pred, logit in predictions_array:
+    for (y_true, y_pred, logit) in predictions_array:
         if y_true == y_pred:
             correct += 1
     return correct / len(predictions_array)
@@ -197,13 +212,13 @@ class SentenceSentimentTrain:
             total_loss = 0.0
 
 
+
 def encode_sentences(
     dataset, N, max_sentence_len, embeddings_lookup, unk_embedding, unks
 ):
     Xs = []
     ys = []
     for sentence in dataset["sentence"][:N]:
-        # pad with 0s to max sentence length in order to enable batching
         # TODO: move padding to training code
         sentence_embedding = [[0] * embeddings_lookup.d_emb] * max_sentence_len
         for i, w in enumerate(sentence.split()):
@@ -211,17 +226,15 @@ def encode_sentences(
             if w in embeddings_lookup:
                 sentence_embedding[i][:] = embeddings_lookup.emb(w)
             else:
-                # use random embedding for unks
                 unks.add(w)
                 sentence_embedding[i][:] = unk_embedding
         Xs.append(sentence_embedding)
-
-    # load labels
-    ys = dataset["label"][:N]
-    return Xs, ys
+    labels = dataset["label"][:N]
+    return Xs, labels
 
 
 def encode_sentiment_data(dataset, pretrained_embeddings, N_train, N_val=0):
+
     #  Determine max sentence length for padding
     max_sentence_len = 0
     for sentence in dataset["train"]["sentence"] + dataset["validation"]["sentence"]:
@@ -255,7 +268,7 @@ def encode_sentiment_data(dataset, pretrained_embeddings, N_train, N_val=0):
 if __name__ == "__main__":
     train_size = 450
     validation_size = 100
-    learning_rate = 0.01
+    learning_rate = 0.1
     max_epochs = 250
 
     (X_train, y_train), (X_val, y_val) = encode_sentiment_data(

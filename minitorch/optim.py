@@ -15,6 +15,20 @@ class SGD(Optimizer):
         self.lr = lr
 
     def zero_grad(self) -> None:
+        """Sets the gradients of all parameters to None.
+
+        This method should be called before computing gradients for a new batch
+        to ensure that gradients from previous computations are cleared.
+
+        Args:
+        ----
+            None
+
+        Returns:
+        -------
+            None
+
+        """
         for p in self.parameters:
             if p.value is None:
                 continue
@@ -26,6 +40,20 @@ class SGD(Optimizer):
                     p.value.grad = None
 
     def step(self) -> None:
+        """Performs a single optimization step.
+
+        Updates the value of each parameter using the currently stored
+        gradient and the learning rate.
+
+        Args:
+        ----
+            None
+
+        Returns:
+        -------
+            None
+
+        """
         for p in self.parameters:
             if p.value is None:
                 continue
